@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include "../src/lab.h"
 
+// Error handling from man page
 static void explain_waitpid(int status)
 {
     if (!WIFEXITED(status))
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
             pid_t pid = fork();
             if (pid == 0)
             {
+                // Boiler-plate code below
                 /*This is the child process*/
                 pid_t child = getpid();
                 setpgid(child, child);
@@ -66,7 +68,7 @@ int main(int argc, char *argv[])
                 signal(SIGTSTP, SIG_DFL);
                 signal(SIGTTIN, SIG_DFL);
                 signal(SIGTTOU, SIG_DFL);
-                execvp(cmd[0], cmd);
+                execvp(cmd[0], cmd); // execute the command, e.g. ls
                 exit(EXIT_FAILURE);
             }
             else if (pid < 0)
@@ -77,7 +79,7 @@ int main(int argc, char *argv[])
             }
 
             /*
-            This is in the parent put the child process into its own
+            This is in the parent. Put the child process into its own
             process group and give it control of the terminal
             to avoid a race condition
             */
