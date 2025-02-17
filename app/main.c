@@ -35,25 +35,31 @@ static void explain_waitpid(int status)
     }
 }
 
+// void print(char** arr, int n) {
+//     for (int i = 0; i < n; i++)
+//         printf("%s\n", *(arr + i));
+// }
+
 int main(int argc, char *argv[])
 {
     parse_args(argc, argv);
     struct shell sh;
     sh_init(&sh);
     char *line = (char *)NULL;
-    while ((line = readline(sh.prompt)))
+    while((line = readline(sh.prompt)))
     {
         // do nothing on blank lines don't save history or attempt to exec
         line = trim_white(line);
-        if (!*line)
+        if(!*line)
         {
             free(line);
             continue;
         }
         add_history(line);
+        
         // check to see if we are launching a built in command
         char **cmd = cmd_parse(line);
-        if (!do_builtin(&sh, cmd))
+        if(!do_builtin(&sh, cmd))
         {
             pid_t pid = fork();
             if (pid == 0)
@@ -91,9 +97,10 @@ int main(int argc, char *argv[])
             if (rval == -1)
             {
                 fprintf(stderr, "Wait pid failed with -1\n");
-		explain_waitpid(status);
+		        explain_waitpid(status);
             }
             cmd_free(cmd);
+
             // get control of the shell
             tcsetpgrp(sh.shell_terminal, sh.shell_pgid);
         }

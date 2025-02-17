@@ -4,7 +4,9 @@
 
 char *get_prompt(const char *env)
 {
-
+    const char* prompt = getenv(env); // returns NULL if env variable does not exist
+    if(prompt) return prompt;
+    return "shell>";
 }
 
 int change_dir(char **dir)
@@ -12,24 +14,127 @@ int change_dir(char **dir)
 
 }
 
+// Form needed by execvp => int execvp(const char *file, char *const argv[]);
 char **cmd_parse(char const *line)
 {
+    if(*line == NULL) exit(EXIT_SUCCESS); // Check for EOF input
 
+    char** argv = malloc(2 * sizeof(char*)); // Allocate space for arguments
+    if(!argv)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    // Split line by spaces and store in argv
+    printf("Tokenizing...\n");
+    int position = 0;
+    char* token = strtok(line, " ");
+    while(token != NULL)
+    {
+        argv[position] = token;
+        position++;
+        token = strtok(NULL, " ");
+    }
+    printf("Successfully tokenized!\n");
+    printf("Tokens: %s %s\n", argv[0], argv[1]);
+    return argv;
 }
 
-void cmd_free(char ** line)
+void cmd_free(char** line)
 {
-
+    for(int i=0; line[i]; i++)
+        free(line[i]);
+    free(line);
 }
 
 char *trim_white(char *line)
 {
+    // Allocate new string to copy the line
+    char* line_copy = malloc(sizeof(char*));
+    if(!line_copy)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Find index of the first non-whitespace char
+    int start;
+    for(start = 0; start < strlen(line); start++)
+    {
+        if(isspace((unsigned char)line[start])) 
+            continue;
+        else break;
+    }
 
+    // Find index of the last non-whitespace char
+    int end;
+    for(end = strlen(line) - 1; end >= 0; end--)
+    {
+        if(isspace((unsigned char)line[end])) 
+            continue;
+        else break;
+    }
+
+    // Copy all the in-between chars to the new string
+    int mid;
+    int pos = 0;
+    for(mid = start; mid <= end; mid++) {
+        line_copy[pos] = line[mid];
+        pos++;
+    }
+    line_copy[pos++] = '\0'; // Null terminate the string
+    
+    free(line);
+    return line_copy;
 }
 
-bool do_builtin(struct shell *sh, char **argv)
+bool do_builtin(struct shell* sh, char** argv)
 {
+    // Do "exit" cmd
+    if(strcmp(argv[0], "exit") == 0)
+    {
+        // cmd_free(argv);
+        // free(sh->prompt);
+        exit(EXIT_SUCCESS);
+        return true;
+    }
 
+    // Do "cd" cmd
+    else if(strcmp(*argv, "cd") == 0)
+    {
+        char* dir = *(argv + 1);
+        printf("target: %s", *(argv + 1));
+
+        // No second arg provided => cd to home dir
+        if(*dir == NULL)
+        {   
+            if(dir = getenv("HOME")) // Try to retrieve home dir from env variable
+            {
+                printf("cd'd to ~");
+                chdir(dir); 
+            }
+            else if((dir = getpwuid(getuid())->pw_dir)) // Try to retrieve home dir from user id
+            {
+                printf("cd'd to ~");
+                chdir(dir);
+            }
+            else perror("cd");
+        }
+
+        // Second arg provided => switch to the specified dir
+        else
+        {
+            if(chdir(dir) == -1)
+                perror("cd");
+            else printf("successfully switched to: %s", *dir);
+        }
+        
+        return true;
+    }
+    // TODO: Check for other built-ins
+
+    return false;
 }
 
 void sh_init(struct shell *sh)
@@ -37,6 +142,7 @@ void sh_init(struct shell *sh)
     /* See if we are running interactively.  */
     sh->shell_terminal = STDIN_FILENO;
     sh->shell_is_interactive = isatty(sh->shell_terminal);
+    sh->prompt = get_prompt("MY_PROMPT");
 
     if(sh->shell_is_interactive)
     {
@@ -81,7 +187,6 @@ void parse_args(int argc, char **argv)
     int opt;
 
     while((opt = getopt(argc, argv, SHELL_ARGS)) != -1)
-    {
         switch(opt)
         {
             case 'v':
@@ -89,27 +194,19 @@ void parse_args(int argc, char **argv)
                 exit(EXIT_SUCCESS);
                 break;
             case '?':
-                // if(optopt == 'c')
-                //     fprintf (stderr, "Option -%c requires an argument.\n", optopt);
                 if(isprint(optopt))
                 {
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-                    // abort();
                 }
                 else
                 {
                     fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
-                    // abort();
                 }
             default:
                 abort();
         }
-    }
 
     // printf ("vflag = %d\n", vflag);
-
     for(int index = optind; index < argc; index++)
-    {
         printf ("Non-option argument %s\n", argv[index]);
-    }
 }

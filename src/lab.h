@@ -6,6 +6,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <pwd.h>
 
 #define lab_VERSION_MAJOR 1
 #define lab_VERSION_MINOR 2
