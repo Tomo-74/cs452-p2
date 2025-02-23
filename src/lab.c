@@ -2,24 +2,74 @@
 #include <stdio.h>
 #include "lab.h"
 
-char *get_prompt(const char *env)
+char* get_prompt(const char* env)
 {
-    const char* prompt = getenv(env); // returns NULL if env variable does not exist
+    char* prompt = getenv(env);
     if(prompt) return prompt;
     return "shell>";
 }
 
-int change_dir(char **dir)
+int change_dir(char** dir)
 {
+    char* targetDir;
+    // char cwd[1024]; // for dynamically changing the shell prompt based on current dur
 
+    // No second arg provided => cd to home dir
+    if(*dir == NULL)
+    {   
+        // Try to retrieve home dir from env variable
+        if((targetDir = getenv("HOME")))
+        {
+            chdir(targetDir);
+            printf("Switched to ~\n");
+        }
+        // Try to retrieve home dir from user id
+        else if((targetDir = getpwuid(getuid())->pw_dir))
+        {
+            chdir(targetDir);
+            printf("Switched to ~\n");
+        }
+        // Could not retrieve home dir
+        else perror("cd");
+    }
+
+    // Second arg provided => switch to the specified dir
+    else
+    {
+        targetDir = *dir;
+        printf("Attempting switch to dir: %s\n", targetDir);
+        
+        // Attempt cd
+        if(chdir(targetDir) == -1)
+            perror("cd");
+        else 
+        {
+            printf("Successfully switched to: %s\n", targetDir);
+            // // TODO Update the prompt to be the current dir
+            // getcwd(cwd, sizeof(cwd));
+            // if(!cwd) sh->prompt = cwd;
+        }
+    }
+    return true;
 }
 
 // Form needed by execvp => int execvp(const char *file, char *const argv[]);
-char **cmd_parse(char const *line)
+char** cmd_parse(char const *line)
 {
-    if(*line == NULL) exit(EXIT_SUCCESS); // Check for EOF input
+     // Check for EOF input
+    if(feof(stdin)) exit(EXIT_SUCCESS);
 
-    char** argv = malloc(2 * sizeof(char*)); // Allocate space for arguments
+     // Cannot pass const variable 'line' to the destructive strtok function; must make a copy
+    char* line_copy = malloc(sizeof(*line));
+    if(!line_copy)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(line_copy, line);
+
+    // Allocate space for line arguments
+    char** argv = malloc(2 * sizeof(char*));
     if(!argv)
     {
         perror("malloc");
@@ -27,17 +77,17 @@ char **cmd_parse(char const *line)
     }
 
     // Split line by spaces and store in argv
-    printf("Tokenizing...\n");
+    // printf("Tokenizing...\n");
     int position = 0;
-    char* token = strtok(line, " ");
+    char* token = strtok(line_copy, " ");
     while(token != NULL)
     {
         argv[position] = token;
         position++;
         token = strtok(NULL, " ");
     }
-    printf("Successfully tokenized!\n");
-    printf("Tokens: %s %s\n", argv[0], argv[1]);
+    // printf("Successfully tokenized!\n");
+    // printf("Tokens: %s %s\n", argv[0], argv[1]);
     return argv;
 }
 
@@ -48,7 +98,7 @@ void cmd_free(char** line)
     free(line);
 }
 
-char *trim_white(char *line)
+char* trim_white(char* line)
 {
     // Allocate new string to copy the line
     char* line_copy = malloc(sizeof(char*));
@@ -59,7 +109,7 @@ char *trim_white(char *line)
     }
     
     // Find index of the first non-whitespace char
-    int start;
+    size_t start;
     for(start = 0; start < strlen(line); start++)
     {
         if(isspace((unsigned char)line[start])) 
@@ -91,53 +141,39 @@ char *trim_white(char *line)
 
 bool do_builtin(struct shell* sh, char** argv)
 {
-    // Do "exit" cmd
-    if(strcmp(argv[0], "exit") == 0)
+    // "exit" cmd
+    if(strcmp(*argv, "exit") == 0)
     {
-        // cmd_free(argv);
-        // free(sh->prompt);
+        clear_history();
         exit(EXIT_SUCCESS);
         return true;
     }
 
-    // Do "cd" cmd
+    // "cd" cmd
     else if(strcmp(*argv, "cd") == 0)
     {
-        char* dir = *(argv + 1);
-        printf("target: %s", *(argv + 1));
-
-        // No second arg provided => cd to home dir
-        if(*dir == NULL)
-        {   
-            if(dir = getenv("HOME")) // Try to retrieve home dir from env variable
-            {
-                printf("cd'd to ~");
-                chdir(dir); 
-            }
-            else if((dir = getpwuid(getuid())->pw_dir)) // Try to retrieve home dir from user id
-            {
-                printf("cd'd to ~");
-                chdir(dir);
-            }
-            else perror("cd");
-        }
-
-        // Second arg provided => switch to the specified dir
-        else
-        {
-            if(chdir(dir) == -1)
-                perror("cd");
-            else printf("successfully switched to: %s", *dir);
-        }
-        
+        change_dir((argv+1)); // Pass only the second arg, the dir
         return true;
     }
-    // TODO: Check for other built-ins
+        
+    // "history" cmd
+    else if(strcmp(*argv, "history") == 0)
+    {
+        // Retrieve and print history of commands entered
+        HIST_ENTRY** cmd_history_list = history_list();
+        if (cmd_history_list) {
+            for (int i = 0; cmd_history_list[i]; i++) {
+                printf("%d: %s\n", i, cmd_history_list[i]->line);
+            }
+        }
+        return true;
+    }
 
+    // Command was not built-in
     return false;
 }
 
-void sh_init(struct shell *sh)
+void sh_init(struct shell* sh)
 {
     /* See if we are running interactively.  */
     sh->shell_terminal = STDIN_FILENO;
@@ -174,9 +210,11 @@ void sh_init(struct shell *sh)
     }
 }
 
-void sh_destroy(struct shell *sh)
+void sh_destroy(struct shell* sh)
 {
-
+    // Nothing needs to be freed because nothing in the shell is dynamically allocated
+    clear_history();
+    sh->shell_is_interactive = 0; // just to avoid unused parameter warning
 }
 
 

@@ -55,9 +55,12 @@ int main(int argc, char *argv[])
             free(line);
             continue;
         }
+
+        // Begin storing entered commands
+        using_history();
         add_history(line);
         
-        // check to see if we are launching a built in command
+        // Check to see if we are launching a built in command
         char **cmd = cmd_parse(line);
         if(!do_builtin(&sh, cmd))
         {
@@ -74,6 +77,7 @@ int main(int argc, char *argv[])
                 signal(SIGTSTP, SIG_DFL);
                 signal(SIGTTIN, SIG_DFL);
                 signal(SIGTTOU, SIG_DFL);
+                clear_history();
                 execvp(cmd[0], cmd); // execute the command, e.g. ls
                 exit(EXIT_FAILURE);
             }
@@ -81,6 +85,7 @@ int main(int argc, char *argv[])
             {
                 // If fork failed we are in trouble!
                 perror("fork return < 0 Process creation failed!");
+                clear_history();
                 abort();
             }
 
@@ -97,6 +102,7 @@ int main(int argc, char *argv[])
             if (rval == -1)
             {
                 fprintf(stderr, "Wait pid failed with -1\n");
+                clear_history();
 		        explain_waitpid(status);
             }
             cmd_free(cmd);
@@ -105,5 +111,6 @@ int main(int argc, char *argv[])
             tcsetpgrp(sh.shell_terminal, sh.shell_pgid);
         }
     }
+    clear_history();
     exit(EXIT_SUCCESS);
 }
