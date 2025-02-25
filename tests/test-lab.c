@@ -12,6 +12,19 @@ void tearDown(void) {
 }
 
 
+
+void test_cmd_parse(void)
+{
+     char **rval = cmd_parse("ls -a -l");
+     TEST_ASSERT_TRUE(rval);
+     TEST_ASSERT_EQUAL_STRING("ls", rval[0]);
+     TEST_ASSERT_EQUAL_STRING("-a", rval[1]);
+     TEST_ASSERT_EQUAL_STRING("-l", rval[2]);
+     TEST_ASSERT_EQUAL_STRING(NULL, rval[3]);
+     TEST_ASSERT_FALSE(rval[3]);
+     cmd_free(rval);
+}
+
 void test_cmd_parse2(void)
 {
      //The string we want to parse from the user.
@@ -37,16 +50,44 @@ void test_cmd_parse2(void)
      free(expected);
 }
 
-void test_cmd_parse(void)
+void test_cmd_parse3(void)
 {
-     char **rval = cmd_parse("ls -a -l");
+     char **rval = cmd_parse("ls -a");
      TEST_ASSERT_TRUE(rval);
      TEST_ASSERT_EQUAL_STRING("ls", rval[0]);
      TEST_ASSERT_EQUAL_STRING("-a", rval[1]);
-     TEST_ASSERT_EQUAL_STRING("-l", rval[2]);
-     TEST_ASSERT_EQUAL_STRING(NULL, rval[3]);
-     TEST_ASSERT_FALSE(rval[3]);
+     TEST_ASSERT_EQUAL_STRING(NULL, rval[2]);
+     TEST_ASSERT_FALSE(rval[2]);
      cmd_free(rval);
+}
+
+void test_cmd_parse4(void)
+{
+     //The string we want to parse from the user.
+     //foo -v
+     char *stng = (char*)malloc(sizeof(char)*11);
+     strcpy(stng, "    foo -v");
+     
+     char *stng_no_whitespace = (char*)malloc(sizeof(char)*7);
+     strcpy(stng_no_whitespace, trim_white(stng));
+
+     char **actual = cmd_parse(stng_no_whitespace);
+     //construct our expected output
+     size_t n = sizeof(char*) * 6;
+     char **expected = (char**) malloc(sizeof(char*) *6);
+     memset(expected,0,n);
+     expected[0] = (char*)malloc(sizeof(char)*4);
+     expected[1] = (char*)malloc(sizeof(char)*3);
+     expected[2] = (char*)NULL;
+
+     strcpy(expected[0], "foo");
+     strcpy(expected[1], "-v");
+     TEST_ASSERT_EQUAL_STRING(expected[0],actual[0]);
+     TEST_ASSERT_EQUAL_STRING(expected[1],actual[1]);
+     TEST_ASSERT_FALSE(actual[2]);
+     free(expected[0]);
+     free(expected[1]);
+     free(expected);
 }
 
 void test_trim_white_no_whitespace(void)
@@ -146,6 +187,19 @@ void test_ch_dir_home(void)
      cmd_free(cmd);
 }
 
+void test_ch_dir_home2(void)
+{
+     char *line = (char*) calloc(10, sizeof(char));
+     strncpy(line, "cd ~", 10);
+     char **cmd = cmd_parse(line);
+     change_dir(cmd);
+     char *actual = getcwd(NULL,0);
+     TEST_ASSERT_EQUAL_STRING("/home/codespace", actual);
+     free(line);
+     free(actual);
+     cmd_free(cmd);
+}
+
 void test_ch_dir_root(void)
 {
      char *line = (char*) calloc(10, sizeof(char));
@@ -159,10 +213,25 @@ void test_ch_dir_root(void)
      cmd_free(cmd);
 }
 
+void test_ch_dir1(void)
+{
+     char *line = (char*) calloc(10, sizeof(char));
+     strncpy(line, "cd /home", 10);
+     char **cmd = cmd_parse(line);
+     change_dir(cmd);
+     char *actual = getcwd(NULL,0);
+     TEST_ASSERT_EQUAL_STRING("/home", actual);
+     free(line);
+     free(actual);
+     cmd_free(cmd);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_cmd_parse);
   RUN_TEST(test_cmd_parse2);
+  RUN_TEST(test_cmd_parse3);
+  RUN_TEST(test_cmd_parse4);
   RUN_TEST(test_trim_white_no_whitespace);
   RUN_TEST(test_trim_white_start_whitespace);
   RUN_TEST(test_trim_white_end_whitespace);
@@ -172,7 +241,9 @@ int main(void) {
   RUN_TEST(test_get_prompt_default);
   RUN_TEST(test_get_prompt_custom);
   RUN_TEST(test_ch_dir_home);
+  RUN_TEST(test_ch_dir_home2);
   RUN_TEST(test_ch_dir_root);
+  RUN_TEST(test_ch_dir1);
 
   return UNITY_END();
 }
