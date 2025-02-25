@@ -4,9 +4,10 @@
 
 char* get_prompt(const char* env)
 {
-    char* prompt = getenv(env);
-    if(prompt) return prompt;
-    return "shell>";
+    char* prompt = (char*)malloc(sizeof(char));
+    if(getenv(env)) strcpy(prompt, getenv(env));
+    else strcpy(prompt, "shell>");
+    return prompt;
 }
 
 int change_dir(char** dir)
@@ -21,13 +22,13 @@ int change_dir(char** dir)
         if((targetDir = getenv("HOME")))
         {
             chdir(targetDir);
-            printf("Switched to ~\n");
+            // printf("Switched to ~\n");
         }
         // Try to retrieve home dir from user id
         else if((targetDir = getpwuid(getuid())->pw_dir))
         {
             chdir(targetDir);
-            printf("Switched to ~\n");
+            // printf("Switched to ~\n");
         }
         // Could not retrieve home dir
         else perror("cd");
@@ -37,14 +38,14 @@ int change_dir(char** dir)
     else
     {
         targetDir = *dir;
-        printf("Attempting switch to dir: %s\n", targetDir);
+        // printf("Attempting switch to dir: %s\n", targetDir);
         
         // Attempt cd
         if(chdir(targetDir) == -1)
             perror("cd");
         else 
         {
-            printf("Successfully switched to: %s\n", targetDir);
+            // printf("Successfully switched to: %s\n", targetDir);
             // // TODO Update the prompt to be the current dir
             // getcwd(cwd, sizeof(cwd));
             // if(!cwd) sh->prompt = cwd;
@@ -56,28 +57,19 @@ int change_dir(char** dir)
 // Form needed by execvp => int execvp(const char *file, char *const argv[]);
 char** cmd_parse(char const *line)
 {
-     // Check for EOF input
+    // Check for EOF input
     if(feof(stdin)) exit(EXIT_SUCCESS);
 
-     // Cannot pass const variable 'line' to the destructive strtok function; must make a copy
+    // Cannot pass const variable 'line' to the destructive strtok function; must make a copy
     char* line_copy = malloc(sizeof(*line));
-    if(!line_copy)
-    {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
+    if(!line_copy) { perror("malloc"); exit(EXIT_FAILURE); }
     strcpy(line_copy, line);
 
-    // Allocate space for line arguments
-    char** argv = malloc(2 * sizeof(char*));
-    if(!argv)
-    {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
+    // Allocate space for arguments
+    char** argv = malloc(sysconf(_SC_ARG_MAX) * sizeof(char*));
+    if(!argv) { perror("malloc"); exit(EXIT_FAILURE); }
 
     // Split line by spaces and store in argv
-    // printf("Tokenizing...\n");
     int position = 0;
     char* token = strtok(line_copy, " ");
     while(token != NULL)
@@ -86,28 +78,22 @@ char** cmd_parse(char const *line)
         position++;
         token = strtok(NULL, " ");
     }
-    // printf("Successfully tokenized!\n");
-    // printf("Tokens: %s %s\n", argv[0], argv[1]);
+    argv[position] = NULL;
     return argv;
 }
 
 void cmd_free(char** line)
 {
-    for(int i=0; line[i]; i++)
-        free(line[i]);
     free(line);
 }
 
 char* trim_white(char* line)
 {
     // Allocate new string to copy the line
-    char* line_copy = malloc(sizeof(char*));
-    if(!line_copy)
-    {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    
+    char* line_copy = malloc(sizeof(*line));
+    if(!line_copy) { perror("malloc"); exit(EXIT_FAILURE); }
+    strcpy(line_copy, line);
+
     // Find index of the first non-whitespace char
     size_t start;
     for(start = 0; start < strlen(line); start++)
@@ -135,7 +121,6 @@ char* trim_white(char* line)
     }
     line_copy[pos++] = '\0'; // Null terminate the string
     
-    free(line);
     return line_copy;
 }
 

@@ -35,11 +35,6 @@ static void explain_waitpid(int status)
     }
 }
 
-// void print(char** arr, int n) {
-//     for (int i = 0; i < n; i++)
-//         printf("%s\n", *(arr + i));
-// }
-
 int main(int argc, char *argv[])
 {
     parse_args(argc, argv);
@@ -48,7 +43,7 @@ int main(int argc, char *argv[])
     char *line = (char *)NULL;
     while((line = readline(sh.prompt)))
     {
-        // do nothing on blank lines don't save history or attempt to exec
+        // Do nothing on blank lines don't save history or attempt to exec
         line = trim_white(line);
         if(!*line)
         {
@@ -56,16 +51,15 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        // Begin storing entered commands
-        using_history();
         add_history(line);
         
         // Check to see if we are launching a built in command
         char **cmd = cmd_parse(line);
+
         if(!do_builtin(&sh, cmd))
         {
             pid_t pid = fork();
-            if (pid == 0)
+            if(pid == 0)
             {
                 // Boiler-plate code below
                 /*This is the child process*/
@@ -77,15 +71,13 @@ int main(int argc, char *argv[])
                 signal(SIGTSTP, SIG_DFL);
                 signal(SIGTTIN, SIG_DFL);
                 signal(SIGTTOU, SIG_DFL);
-                clear_history();
                 execvp(cmd[0], cmd); // execute the command, e.g. ls
                 exit(EXIT_FAILURE);
             }
-            else if (pid < 0)
+            else if(pid < 0)
             {
                 // If fork failed we are in trouble!
                 perror("fork return < 0 Process creation failed!");
-                clear_history();
                 abort();
             }
 
@@ -102,7 +94,6 @@ int main(int argc, char *argv[])
             if (rval == -1)
             {
                 fprintf(stderr, "Wait pid failed with -1\n");
-                clear_history();
 		        explain_waitpid(status);
             }
             cmd_free(cmd);
@@ -111,6 +102,5 @@ int main(int argc, char *argv[])
             tcsetpgrp(sh.shell_terminal, sh.shell_pgid);
         }
     }
-    clear_history();
     exit(EXIT_SUCCESS);
 }
