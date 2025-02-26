@@ -133,8 +133,8 @@ bool do_builtin(struct shell* sh, char** argv)
     {
         // Retrieve and print history of commands entered
         HIST_ENTRY** cmd_history_list = history_list();
-        if (cmd_history_list) {
-            for (int i = 0; cmd_history_list[i]; i++) {
+        if(cmd_history_list) {
+            for(int i = 0; cmd_history_list[i]; i++) {
                 printf("%d: %s\n", i, cmd_history_list[i]->line);
             }
         }
@@ -186,12 +186,9 @@ void sh_destroy(struct shell* sh)
 {
     // Nothing needs to be freed because nothing in the shell is dynamically allocated
     clear_history();
-    sh->shell_is_interactive = 0; // just to avoid unused parameter warning
+    sh->shell_is_interactive = 0; // Just to avoid unused parameter warning
 }
 
-
-// "args" are the flags passed when calling the shell, i.e. -v and -h
-// args are also flags passed to commands inside the shell, like ls -l
 void parse_args(int argc, char **argv)
 {
     int opt;
