@@ -117,6 +117,7 @@ bool do_builtin(struct shell* sh, char** argv)
     if(strcmp(*argv, "exit") == 0)
     {
         clear_history();
+        sh_destroy(sh); // Update: destroy shell before exit
         exit(EXIT_SUCCESS);
         return true;
     }
@@ -184,9 +185,7 @@ void sh_init(struct shell* sh)
 
 void sh_destroy(struct shell* sh)
 {
-    // Nothing needs to be freed because nothing in the shell is dynamically allocated
-    clear_history();
-    sh->shell_is_interactive = 0; // Just to avoid unused parameter warning
+    free(sh->prompt); // Update: free the malloc'd prompt
 }
 
 void parse_args(int argc, char **argv)
