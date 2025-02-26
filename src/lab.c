@@ -13,22 +13,20 @@ char* get_prompt(const char* env)
 int change_dir(char** dir)
 {
     char* targetDir;
-    // char cwd[1024]; // for dynamically changing the shell prompt based on current dur
-
     // No second arg provided => cd to home dir
-    if(*dir == NULL)
+    if(*(dir+1) == NULL)
     {   
         // Try to retrieve home dir from env variable
         if((targetDir = getenv("HOME")))
         {
             chdir(targetDir);
-            // printf("Switched to ~\n");
+            printf("Switched to %s\n", targetDir);
         }
         // Try to retrieve home dir from user id
         else if((targetDir = getpwuid(getuid())->pw_dir))
         {
             chdir(targetDir);
-            // printf("Switched to ~\n");
+            printf("Switched to %s\n", targetDir);
         }
         // Could not retrieve home dir
         else perror("cd");
@@ -37,35 +35,24 @@ int change_dir(char** dir)
     // Second arg provided => switch to the specified dir
     else
     {
-        targetDir = *dir;
-        // printf("Attempting switch to dir: %s\n", targetDir);
+        targetDir = *(dir+1);
         
         // Attempt cd
         if(chdir(targetDir) == -1)
             perror("cd");
-        else 
-        {
-            // printf("Successfully switched to: %s\n", targetDir);
-            // // TODO Update the prompt to be the current dir
-            // getcwd(cwd, sizeof(cwd));
-            // if(!cwd) sh->prompt = cwd;
-        }
+        else printf("Switched to %s\n", targetDir);
     }
     return true;
 }
 
-// Form needed by execvp => int execvp(const char *file, char *const argv[]);
 char** cmd_parse(char const *line)
 {
-    // Check for EOF input
-    if(feof(stdin)) exit(EXIT_SUCCESS);
-
-    // Cannot pass const variable 'line' to the destructive strtok function; must make a copy
+    // Cannot pass const var 'line' to the destructive strtok() -> must make a copy
     char* line_copy = malloc(sizeof(*line));
     if(!line_copy) { perror("malloc"); exit(EXIT_FAILURE); }
     strcpy(line_copy, line);
 
-    // Allocate space for arguments
+    // Allocate space for args
     char** argv = malloc(sysconf(_SC_ARG_MAX) * sizeof(char*));
     if(!argv) { perror("malloc"); exit(EXIT_FAILURE); }
 
